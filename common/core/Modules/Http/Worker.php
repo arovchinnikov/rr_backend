@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Core\Modules\Http;
 
+use JsonException;
 use Spiral\RoadRunner\Http\PSR7Worker;
 
 class Worker extends PSR7Worker
@@ -19,7 +20,7 @@ class Worker extends PSR7Worker
     }
 
     /**
-     * @throws \JsonException
+     * @throws JsonException
      */
     public function respondString(string $text): void
     {
