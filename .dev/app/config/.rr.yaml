@@ -1,0 +1,22 @@
+version: "2.7"
+
+rpc:
+  listen: tcp://127.0.0.1:6001
+server:
+  command: "php /app/index.php"
+
+http:
+  address: :8080
+  pool:
+    #set false to production env
+    debug: true
+    num_workers: 2
+    max_jobs: 64
+
+reload:
+  interval: 1s
+  patterns: [ ".php" ]
+  services:
+    http:
+      recursive: true
+      dirs: [ "/app" ]

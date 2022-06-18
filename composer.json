@@ -1,0 +1,23 @@
+{
+    "type": "project",
+    "autoload": {
+        "psr-4": {
+            "Core\\": "common/core"
+        }
+    },
+    "require": {
+        "php": "^8.1",
+        "ext-json": "*",
+        "nyholm/psr7": "1.5.0",
+        "spiral/roadrunner": "2.10.1"
+    },
+    "require-dev": {
+        "squizlabs/php_codesniffer": "3.6.2",
+        "symfony/var-dumper": "6.2.x-dev"
+    },
+    "config": {
+        "preferred-install": "dist",
+        "sort-packages": true,
+        "optimize-autoloader": true
+    }
+}

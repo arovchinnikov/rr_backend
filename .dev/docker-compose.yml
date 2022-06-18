@@ -1,0 +1,13 @@
+version: '2.9'
+
+services:
+  app:
+    build:
+      context: ./
+      dockerfile: app/Dockerfile
+    ports:
+      - "81:8080"
+    working_dir: /app
+    volumes:
+      - ../:/app
+      - ../.dev/app/config/.rr.yaml:/etc/rr.yaml:ro
