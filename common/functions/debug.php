@@ -5,7 +5,7 @@ declare(strict_types=1);
 use Symfony\Component\VarDumper\Cloner\VarCloner;
 use Symfony\Component\VarDumper\Dumper\CliDumper;
 
-function dd_var(): void
+function dd_var(...$var): void
 {
     $debugData = [];
     foreach (func_get_args() as $arg) {

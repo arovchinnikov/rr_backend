@@ -2,16 +2,15 @@
 
 namespace Core\Modules\Http\Components;
 
+use Core\Modules\Http\Exceptions\HttpException;
 use Error;
-use InvalidArgumentException;
 use Psr\Http\Message\StreamInterface;
-use RuntimeException;
 use Throwable;
 
 class Stream implements StreamInterface
 {
     /** @var resource|null */
-    private $stream;
+    private mixed $stream;
 
     private bool $seekable;
     private bool $readable;
@@ -35,6 +34,9 @@ class Stream implements StreamInterface
         ],
     ];
 
+    /**
+     * @throws HttpException
+     */
     public static function create(mixed $body = ''): StreamInterface
     {
         if ($body instanceof StreamInterface) {
@@ -58,9 +60,7 @@ class Stream implements StreamInterface
             return $new;
         }
 
-        throw new InvalidArgumentException(
-            'First argument to Stream::create() must be a string, resource or StreamInterface.'
-        );
+        HttpException::streamCreateError();
     }
 
     public function __destruct()
@@ -68,6 +68,9 @@ class Stream implements StreamInterface
         $this->close();
     }
 
+    /**
+     * @throws HttpException
+     */
     public function __toString(): string
     {
         try {
@@ -94,8 +97,8 @@ class Stream implements StreamInterface
     public function close(): void
     {
         if (isset($this->stream)) {
-            if (\is_resource($this->stream)) {
-                \fclose($this->stream);
+            if (is_resource($this->stream)) {
+                fclose($this->stream);
             }
             $this->detach();
         }
@@ -148,16 +151,17 @@ class Stream implements StreamInterface
         return null;
     }
 
+    /**
+     * @throws HttpException
+     */
     public function tell(): int
     {
         if (!isset($this->stream)) {
-            throw new RuntimeException('Stream is detached');
+            HttpException::detachedStream();
         }
 
         if (false === $result = @ftell($this->stream)) {
-            throw new RuntimeException(
-                'Unable to determine stream position: ' . (\error_get_last()['message'] ?? '')
-            );
+            HttpException::determineStreamPositionError(error_get_last()['message'] ?? '');
         }
 
         return $result;
@@ -173,23 +177,27 @@ class Stream implements StreamInterface
         return $this->seekable;
     }
 
+    /**
+     * @throws HttpException
+     */
     public function seek($offset, $whence = SEEK_SET): void
     {
         if (!isset($this->stream)) {
-            throw new RuntimeException('Stream is detached');
+            HttpException::detachedStream();
         }
 
         if (!$this->seekable) {
-            throw new RuntimeException('Stream is not seekable');
+            HttpException::notSeekableStream();
         }
 
         if (-1 === fseek($this->stream, $offset, $whence)) {
-            throw new RuntimeException(
-                'Unable to seek to stream position "' . $offset . '" with ' . var_export($whence, true)
-            );
+            HttpException::seekStreamPositionError($offset, var_export($whence, true));
         }
     }
 
+    /**
+     * @throws HttpException
+     */
     public function rewind(): void
     {
         $this->seek(0);
@@ -200,20 +208,23 @@ class Stream implements StreamInterface
         return $this->writable;
     }
 
+    /**
+     * @throws HttpException
+     */
     public function write($string): int
     {
         if (!isset($this->stream)) {
-            throw new RuntimeException('Stream is detached');
+            HttpException::detachedStream();
         }
 
         if (!$this->writable) {
-            throw new RuntimeException('Cannot write to a non-writable stream');
+            HttpException::notWritableStream();
         }
 
         $this->size = null;
 
-        if (false === $result = @\fwrite($this->stream, $string)) {
-            throw new RuntimeException('Unable to write to stream: ' . (error_get_last()['message'] ?? ''));
+        if (false === $result = @fwrite($this->stream, $string)) {
+            HttpException::writeStreamError(error_get_last()['message'] ?? '');
         }
 
         return $result;
@@ -224,33 +235,37 @@ class Stream implements StreamInterface
         return $this->readable;
     }
 
+    /**
+     * @throws HttpException
+     */
     public function read($length): string
     {
         if (!isset($this->stream)) {
-            throw new RuntimeException('Stream is detached');
+            HttpException::detachedStream();
         }
 
         if (!$this->readable) {
-            throw new RuntimeException('Cannot read from non-readable stream');
+            HttpException::notReadableStream();
         }
 
         if (false === $result = @fread($this->stream, $length)) {
-            throw new RuntimeException('Unable to read from stream: ' . (error_get_last()['message'] ?? ''));
+            HttpException::readStreamError(error_get_last()['message'] ?? '');
         }
 
         return $result;
     }
 
+    /**
+     * @throws HttpException
+     */
     public function getContents(): string
     {
         if (!isset($this->stream)) {
-            throw new RuntimeException('Stream is detached');
+            HttpException::detachedStream();
         }
 
         if (false === $contents = @stream_get_contents($this->stream)) {
-            throw new RuntimeException(
-                'Unable to read stream contents: ' . (error_get_last()['message'] ?? '')
-            );
+            HttpException::readStreamContentError(error_get_last()['message'] ?? '');
         }
 
         return $contents;

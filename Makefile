@@ -1,5 +1,7 @@
 name := rr_backend
 
+.PHONY: app
+
 compose = docker-compose -f .dev/docker-compose.yml -p="$(name)"
 app = $(compose) exec -T app
 

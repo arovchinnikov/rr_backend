@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Core\Modules\Http\Components\Traits;
 
-use InvalidArgumentException;
+use Core\Modules\Http\Exceptions\HttpException;
 use Psr\Http\Message\UriInterface;
 
 trait RequestTrait
@@ -29,10 +29,13 @@ trait RequestTrait
         return $target;
     }
 
+    /**
+     * @throws HttpException
+     */
     public function withRequestTarget($requestTarget): self
     {
         if (preg_match('#\s#', $requestTarget)) {
-            throw new InvalidArgumentException('Invalid request target provided; cannot contain whitespace');
+            HttpException::invalidRequestTarget();
         }
 
         $new = clone $this;
@@ -46,10 +49,13 @@ trait RequestTrait
         return $this->method;
     }
 
+    /**
+     * @throws HttpException
+     */
     public function withMethod($method): self
     {
         if (!is_string($method)) {
-            throw new InvalidArgumentException('Method must be a string');
+            HttpException::methodTypeError();
         }
 
         $new = clone $this;

@@ -6,9 +6,8 @@ namespace Core\Modules\Http\Components;
 
 use Core\Modules\Http\Components\Traits\MessageTrait;
 use Core\Modules\Http\Enums\ResponseCode;
-use InvalidArgumentException;
+use Core\Modules\Http\Exceptions\HttpException;
 use Psr\Http\Message\ResponseInterface;
-use Psr\Http\Message\StreamInterface;
 
 class Response implements ResponseInterface
 {
@@ -17,13 +16,6 @@ class Response implements ResponseInterface
     private string $reasonPhrase = '';
     private int $statusCode;
 
-    /**
-     * @param int $status Status code
-     * @param array $headers Response headers
-     * @param string|resource|StreamInterface|null $body Response body
-     * @param string $version Protocol version
-     * @param string|null $reason Reason phrase
-     */
     public function __construct(
         int $status = 200,
         array $headers = [],
@@ -56,17 +48,18 @@ class Response implements ResponseInterface
         return $this->reasonPhrase;
     }
 
+    /**
+     * @throws HttpException
+     */
     public function withStatus($code, $reasonPhrase = ''): self
     {
         if (!is_int($code) && !is_string($code)) {
-            throw new InvalidArgumentException('Status code has to be an integer');
+            HttpException::statusCodeTypeError();
         }
 
         $code = (int) $code;
         if ($code < 100 || $code > 599) {
-            throw new InvalidArgumentException(
-                'Status code has to be an integer between 100 and 599. A status code of ' . $code . ' was given'
-            );
+            HttpException::invalidStatusCodeValue($code);
         }
 
         $new = clone $this;

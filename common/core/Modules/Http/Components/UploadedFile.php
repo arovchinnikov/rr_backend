@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace Core\Modules\Http\Components;
 
-use InvalidArgumentException;
+use Core\Modules\Http\Exceptions\HttpException;
 use Psr\Http\Message\StreamInterface;
 use Psr\Http\Message\UploadedFileInterface;
-use RuntimeException;
 
 class UploadedFile implements UploadedFileInterface
 {
@@ -30,6 +29,9 @@ class UploadedFile implements UploadedFileInterface
     private int $size;
     private ?StreamInterface $stream;
 
+    /**
+     * @throws HttpException
+     */
     public function __construct(
         mixed $streamOrFile,
         int $size,
@@ -37,12 +39,16 @@ class UploadedFile implements UploadedFileInterface
         string $clientFilename = null,
         string $clientMediaType = null
     ) {
+        if (!isset(self::ERRORS[$errorStatus])) {
+            HttpException::invalidErrorStatus();
+        }
+
         if (null !== $clientFilename && !is_string($clientFilename)) {
-            throw new InvalidArgumentException('Upload file client filename must be a string or null');
+            HttpException::invalidFilename();
         }
 
         if (null !== $clientMediaType && !is_string($clientMediaType)) {
-            throw new InvalidArgumentException('Upload file client media type must be a string or null');
+            HttpException::invalidMediaType();
         }
 
         $this->error = $errorStatus;
@@ -58,23 +64,28 @@ class UploadedFile implements UploadedFileInterface
             } elseif ($streamOrFile instanceof StreamInterface) {
                 $this->stream = $streamOrFile;
             } else {
-                throw new InvalidArgumentException('Invalid stream or file provided for UploadedFile');
+                HttpException::invalidProvidedUploadedFileContent();
             }
         }
     }
 
-
+    /**
+     * @throws HttpException
+     */
     private function validateActive(): void
     {
         if (UPLOAD_ERR_OK !== $this->error) {
-            throw new RuntimeException('Cannot retrieve stream due to upload error');
+            HttpException::fileUploadError();
         }
 
         if ($this->moved) {
-            throw new RuntimeException('Cannot retrieve stream after it has already been moved');
+            HttpException::movedStream();
         }
     }
 
+    /**
+     * @throws HttpException
+     */
     public function getStream(): StreamInterface
     {
         $this->validateActive();
@@ -84,22 +95,21 @@ class UploadedFile implements UploadedFileInterface
         }
 
         if (false === $resource = @fopen($this->file, 'r')) {
-            throw new RuntimeException(
-                'The file "' . $this->file . '" cannot be opened: ' . error_get_last()['message'] ?? ''
-            );
+            HttpException::fileCantBeOpened($this->file, error_get_last()['message'] ?? '');
         }
 
         return Stream::create($resource);
     }
 
+    /**
+     * @throws HttpException
+     */
     public function moveTo(mixed $targetPath): void
     {
         $this->validateActive();
 
         if (!is_string($targetPath) || '' === $targetPath) {
-            throw new InvalidArgumentException(
-                'Invalid path provided for move operation; must be a non-empty string'
-            );
+            HttpException::invalidPathProvided();
         }
 
         if (null !== $this->file) {
@@ -107,10 +117,7 @@ class UploadedFile implements UploadedFileInterface
                 @rename($this->file, $targetPath) : @move_uploaded_file($this->file, $targetPath);
 
             if (false === $this->moved) {
-                throw new RuntimeException(
-                    'Uploaded file could not be moved to "' .
-                    $targetPath . '": %s' . error_get_last()['message'] ?? ''
-                );
+                HttpException::invalidMovePath($targetPath, error_get_last()['message'] ?? '');
             }
         } else {
             $stream = $this->getStream();
@@ -119,9 +126,7 @@ class UploadedFile implements UploadedFileInterface
             }
 
             if (false === $resource = @fopen($targetPath, 'w')) {
-                throw new RuntimeException(
-                    'The file "' . $targetPath . '" cannot be opened: ' . error_get_last()['message'] ?? ''
-                );
+                HttpException::fileCantBeOpened($targetPath, error_get_last()['message'] ?? '');
             }
 
             $dest = Stream::create($resource);

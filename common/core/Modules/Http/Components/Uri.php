@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Core\Modules\Http\Components;
 
+use Core\Modules\Http\Exceptions\HttpException;
 use InvalidArgumentException;
 use Psr\Http\Message\UriInterface;
 
@@ -101,10 +102,13 @@ class Uri implements UriInterface
         return $this->fragment;
     }
 
+    /**
+     * @throws HttpException
+     */
     public function withScheme($scheme): self
     {
         if (!is_string($scheme)) {
-            throw new InvalidArgumentException('Scheme must be a string');
+            HttpException::schemeTypeError();
         }
 
         if ($this->scheme === $scheme = strtr($scheme, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')) {
@@ -135,10 +139,13 @@ class Uri implements UriInterface
         return $new;
     }
 
+    /**
+     * @throws HttpException
+     */
     public function withHost($host): self
     {
-        if (!\is_string($host)) {
-            throw new InvalidArgumentException('Host must be a string');
+        if (!is_string($host)) {
+            HttpException::hostTypeError();
         }
 
         if ($this->host === $host = strtr($host, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')) {
@@ -245,6 +252,9 @@ class Uri implements UriInterface
         return !isset(self::SCHEMES[$scheme]) || $port !== self::SCHEMES[$scheme];
     }
 
+    /**
+     * @throws HttpException
+     */
     private function filterPort($port): ?int
     {
         if (null === $port) {
@@ -253,39 +263,45 @@ class Uri implements UriInterface
 
         $port = (int) $port;
         if (0 > $port || 0xffff < $port) {
-            throw new InvalidArgumentException('Invalid port: ' . $port . '. Must be between 0 and 65535');
+            HttpException::invalidPortError($port);
         }
 
         return self::isNonStandardPort($this->scheme, $port) ? $port : null;
     }
 
+    /**
+     * @throws HttpException
+     */
     private function filterPath($path): string
     {
         if (!is_string($path)) {
-            throw new InvalidArgumentException('Path must be a string');
+            HttpException::pathTypeError();
         }
 
         return preg_replace_callback(
             '/(?:[^' . self::CHAR_UNRESERVED . self::CHAR_SUB_DELIMS . '%:@\/]++|%(?![A-Fa-f0-9]{2}))/',
-            [__CLASS__, 'rawurlencodeMatchZero'],
+            [__CLASS__, 'rawUrlEncodeMatchZero'],
             $path
         );
     }
 
+    /**
+     * @throws HttpException
+     */
     private function filterQueryAndFragment($str): string
     {
         if (!is_string($str)) {
-            throw new InvalidArgumentException('Query and fragment must be a string');
+            HttpException::queryTypeError();
         }
 
         return preg_replace_callback(
             '/(?:[^' . self::CHAR_UNRESERVED . self::CHAR_SUB_DELIMS . '%:@\/\?]++|%(?![A-Fa-f0-9]{2}))/',
-            [__CLASS__, 'rawurlencodeMatchZero'],
+            [__CLASS__, 'rawUrlEncodeMatchZero'],
             $str
         );
     }
 
-    private static function rawurlencodeMatchZero(array $match): string
+    private static function rawUrlEncodeMatchZero(array $match): string
     {
         return rawurlencode($match[0]);
     }

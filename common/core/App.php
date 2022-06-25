@@ -6,6 +6,7 @@ namespace Core;
 
 use Core\Modules\Http\HttpFactory;
 use Core\Modules\Http\Worker;
+use Core\Modules\Routing\Exceptions\RoutingException;
 use Core\Modules\Routing\Router;
 use JsonException;
 use Throwable;
@@ -16,6 +17,9 @@ class App
     private HttpFactory $factory;
     private Router $router;
 
+    /**
+     * @throws RoutingException
+     */
     public function __construct()
     {
         $this->factory = new HttpFactory();
@@ -40,7 +44,7 @@ class App
         }
     }
 
-    public static function getWorker(): Worker|null
+    public static function getWorker(): ?Worker
     {
         if (isset(self::$worker)) {
             return self::$worker;

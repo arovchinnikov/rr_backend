@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Core\Modules\Http\Components\Traits;
 
 use Core\Modules\Http\Components\Stream;
-use InvalidArgumentException;
+use Core\Modules\Http\Exceptions\HttpException;
 use Psr\Http\Message\StreamInterface;
 
 trait MessageTrait
@@ -39,12 +39,12 @@ trait MessageTrait
 
     public function hasHeader($header): bool
     {
-        return isset($this->headerNames[\strtr($header, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')]);
+        return isset($this->headerNames[strtr($header, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')]);
     }
 
     public function getHeader($header): array
     {
-        $header = \strtr($header, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz');
+        $header = strtr($header, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz');
         if (!isset($this->headerNames[$header])) {
             return [];
         }
@@ -56,13 +56,16 @@ trait MessageTrait
 
     public function getHeaderLine($header): string
     {
-        return \implode(', ', $this->getHeader($header));
+        return implode(', ', $this->getHeader($header));
     }
 
+    /**
+     * @throws HttpException
+     */
     public function withHeader($header, $value): self
     {
         $value = $this->validateAndTrimHeader($header, $value);
-        $normalized = \strtr($header, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz');
+        $normalized = strtr($header, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz');
 
         $new = clone $this;
         if (isset($new->headerNames[$normalized])) {
@@ -74,10 +77,13 @@ trait MessageTrait
         return $new;
     }
 
+    /**
+     * @throws HttpException
+     */
     public function withAddedHeader($header, $value): self
     {
-        if (!\is_string($header) || '' === $header) {
-            throw new \InvalidArgumentException('Header name must be an RFC 7230 compatible string.');
+        if (!is_string($header) || '' === $header) {
+            HttpException::invalidHeaderName();
         }
 
         $new = clone $this;
@@ -88,7 +94,7 @@ trait MessageTrait
 
     public function withoutHeader($header): self
     {
-        $normalized = \strtr($header, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz');
+        $normalized = strtr($header, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz');
         if (!isset($this->headerNames[$normalized])) {
             return $this;
         }
@@ -100,6 +106,9 @@ trait MessageTrait
         return $new;
     }
 
+    /**
+     * @throws HttpException
+     */
     public function getBody(): StreamInterface
     {
         if (empty($this->stream)) {
@@ -121,6 +130,9 @@ trait MessageTrait
         return $new;
     }
 
+    /**
+     * @throws HttpException
+     */
     private function setHeaders(array $headers): void
     {
         foreach ($headers as $header => $value) {
@@ -139,10 +151,13 @@ trait MessageTrait
         }
     }
 
+    /**
+     * @throws HttpException
+     */
     private function validateAndTrimHeader(string $header, array|string $values): array
     {
         if (1 !== preg_match("@^[!#$%&'*+.^_`|~0-9A-Za-z-]+$@", $header)) {
-            throw new InvalidArgumentException('Header name must be an RFC 7230 compatible string.');
+            HttpException::invalidHeaderName();
         }
 
         if (!is_array($values)) {
@@ -150,16 +165,14 @@ trait MessageTrait
                 (!is_numeric($values) && !is_string($values))
                 || 1 !== preg_match("@^[ \t\x21-\x7E\x80-\xFF]*$@", (string) $values)
             ) {
-                throw new InvalidArgumentException('Header values must be RFC 7230 compatible strings.');
+                HttpException::invalidHeaderValues();
             }
 
             return [trim((string) $values, " \t")];
         }
 
         if (empty($values)) {
-            throw new InvalidArgumentException(
-                'Header values must be a string or an array of strings, empty array given.'
-            );
+            HttpException::headerValuesIsEmpty();
         }
 
         $returnValues = [];
@@ -168,7 +181,7 @@ trait MessageTrait
                 (!is_numeric($v) && !is_string($v))
                 || 1 !== preg_match("@^[ \t\x21-\x7E\x80-\xFF]*$@", (string) $v)
             ) {
-                throw new InvalidArgumentException('Header values must be RFC 7230 compatible strings.');
+                HttpException::invalidHeaderValues();
             }
 
             $returnValues[] = trim((string) $v, " \t");

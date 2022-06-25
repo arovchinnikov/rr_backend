@@ -10,6 +10,7 @@ use Core\Modules\Http\Components\ServerRequest;
 use Core\Modules\Http\Components\Stream;
 use Core\Modules\Http\Components\UploadedFile;
 use Core\Modules\Http\Components\Uri;
+use Core\Modules\Http\Enums\ResponseCode;
 use InvalidArgumentException;
 use Psr\Http\Message\RequestFactoryInterface;
 use Psr\Http\Message\RequestInterface;
@@ -47,16 +48,25 @@ class HttpFactory implements
         return new Response($code, [], null, '1.1', $reasonPhrase);
     }
 
+    /**
+     * @throws Exceptions\HttpException
+     */
     public function createStream(string $content = ''): StreamInterface
     {
         return Stream::create($content);
     }
 
+    /**
+     * @throws Exceptions\HttpException
+     */
     public function createStreamFromResource(mixed $resource): StreamInterface
     {
         return Stream::create($resource);
     }
 
+    /**
+     * @throws Exceptions\HttpException
+     */
     public function createStreamFromFile(string $filename, string $mode = 'r'): StreamInterface
     {
         if ('' === $filename) {
@@ -81,6 +91,9 @@ class HttpFactory implements
         return new Uri($uri);
     }
 
+    /**
+     * @throws Exceptions\HttpException
+     */
     public function createUploadedFile(
         StreamInterface $stream,
         int $size = null,
@@ -98,5 +111,26 @@ class HttpFactory implements
     public function createServerRequest(string $method, $uri, array $serverParams = []): ServerRequestInterface
     {
         return new ServerRequest($method, $uri, [], null, '1.1', $serverParams);
+    }
+
+    public function createNotFoundResponse(): ResponseInterface
+    {
+        $response = $this
+            ->createResponse()
+            ->withStatus(ResponseCode::notFound->value)
+            ->withHeader('Content-Type', 'application/json');
+        $response->getBody()->write(json_encode(['message' => 'Not found']));
+
+        return $response;
+    }
+
+    public function createJsonResponse(string $jsonBody): ResponseInterface
+    {
+        $response = $this
+            ->createResponse()
+            ->withHeader('Content-Type', 'application/json');
+        $response->getBody()->write($jsonBody);
+
+        return $response;
     }
 }

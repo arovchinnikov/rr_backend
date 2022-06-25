@@ -6,7 +6,7 @@ namespace Core\Modules\Http\Components;
 
 use Core\Modules\Http\Components\Traits\MessageTrait;
 use Core\Modules\Http\Components\Traits\RequestTrait;
-use InvalidArgumentException;
+use Core\Modules\Http\Exceptions\HttpException;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\UploadedFileInterface;
 use Psr\Http\Message\UriInterface;
@@ -101,12 +101,13 @@ class ServerRequest implements ServerRequestInterface
         return $this->parsedBody;
     }
 
+    /**
+     * @throws HttpException
+     */
     public function withParsedBody($data): self
     {
         if (!is_array($data) && !is_object($data) && null !== $data) {
-            throw new InvalidArgumentException(
-                'First parameter to withParsedBody MUST be object, array or null'
-            );
+            HttpException::withParsedBodyError();
         }
 
         $new = clone $this;
@@ -120,16 +121,13 @@ class ServerRequest implements ServerRequestInterface
         return $this->attributes;
     }
 
-    /**
-     * @return mixed
-     */
-    public function getAttribute($attribute, $default = null): mixed
+    public function getAttribute($name, $default = null): mixed
     {
-        if (false === array_key_exists($attribute, $this->attributes)) {
+        if (false === array_key_exists($name, $this->attributes)) {
             return $default;
         }
 
-        return $this->attributes[$attribute];
+        return $this->attributes[$name];
     }
 
     public function withAttribute($name, $value): self
